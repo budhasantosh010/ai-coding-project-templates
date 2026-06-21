@@ -22,8 +22,10 @@ Both are **identical in structure and intent** — only the agent-specific filen
 - [How RECALL is forced, not hoped-for](#how-recall-is-forced-not-hoped-for) — the auto-injection hooks
 - [What's inside each template](#whats-inside-each-template-the-shared-brain)
 - [Optional companion: graphify](#optional-companion-graphify-for-huge-codebases)
+  - [Does graphify auto-fire from these templates?](#does-graphify-auto-fire-from-these-templates)
   - [graphify: install ONCE, build PER PROJECT](#graphify-install-once-build-per-project)
   - [Does it cost money? (the honest caveat)](#does-it-cost-money-the-honest-caveat)
+  - [You don't need the paid step — structure-only is enough](#you-dont-need-the-paid-step--structure-only-is-enough)
 - [License](#license)
 
 ## What problem do these solve?
@@ -142,6 +144,21 @@ episodic + procedural memory (a DIARY)  spatial/code memory (a MAP)
 
 They don't overlap or conflict — run both.
 
+### Does graphify auto-fire from these templates?
+
+**No. They are completely separate systems.** Nothing in these templates installs, calls, or
+fires graphify. Installing a template does **not** install graphify.
+
+```
+TEMPLATE alone           →  graphify does NOTHING (it isn't there).
++ graphify install       →  the AGENT auto-uses the graph DURING a session
+                            (graphify's own hook nudges it to query the map instead of grepping).
++ graphify hook install  →  the MAP auto-rebuilds on every `git commit`.
+```
+
+So graphify only "auto-fires" **per project, after YOU run its own two commands in that
+project** — never automatically from our templates. You stay in control.
+
 ### graphify: install ONCE, build PER PROJECT
 
 People blur three separate events together. Here's the truth, so you know exactly what to do
@@ -226,6 +243,50 @@ background 24/7. **You control when the cost happens.**
 
 > Note: graphify is a separate project (not affiliated with this repo). The PyPI package is
 > `graphifyy` (double-y). Add `graphify-out/cost.json` to your `.gitignore`.
+
+### You don't need the paid step — structure-only is enough
+
+**Job 2 (the LLM meaning layer) is optional, not required.** For "just map my codebase so the
+agent finds code fast," the free structural map (Job 1) already gives you everything that
+matters:
+
+```
+From the FREE structural map alone, the agent can already answer:
+  ✅ where is UserService defined?          ✅ what calls login()?
+  ✅ what does auth.ts import?               ✅ if I change this, what breaks?
+```
+
+And here's the key insight: **your coding agent is already a smart meaning-understander.** It
+reads the structural map and infers the meaning itself, on the fly — so paying a *second* LLM
+to pre-chew "what this means" is largely redundant for navigation.
+
+```
+       graphify Job 2                      your coding agent
+       ──────────────                      ─────────────────
+   "pre-infer meaning, bake it in"   vs    "just read the structure, I'll
+            │ costs tokens                   understand it myself" │ free, already happening
+```
+
+What you give up by skipping Job 2 (all nice-to-haves, none essential for navigation):
+
+```
+✗ understanding NON-code files (PDFs, design docs, images)
+✗ INFERRED conceptual links not written literally in the code
+✗ pretty human-named clusters ("Auth subsystem")
+✗ extracted "why" notes from comments as separate nodes
+```
+
+```
+Skip Job 2 (structure only) is the right default when:
+   pure code navigation · small/medium repo · you just want "find the right file fast"
+
+Job 2 earns its cost only when:
+   you have lots of DOCS/PDFs to tie to code · a huge repo with non-obvious conceptual links ·
+   onboarding people who need the "why"
+```
+
+Bottom line: **a structural map + a capable model = enough.** Treat the LLM layer as optional
+polish, and if you ever want it, run it locally for free with `--backend ollama`.
 
 ## License
 
