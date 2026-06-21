@@ -73,6 +73,55 @@ Each folder has its own README with full install steps. The short version:
    └─ _raw/user_messages.txt   exact word-for-word transcript
 ```
 
+## Optional companion: graphify (for huge codebases)
+
+These templates give the agent **episodic + procedural memory** — what you said, what was
+decided, what failed, how you work. They do **not** map *where the code is*. On a large
+codebase, that second kind of memory matters too, and a great open tool already does it:
+[graphify](https://github.com/safishamsi/graphify) builds a queryable **knowledge graph** of
+your code so the agent looks things up instead of grepping 200 files.
+
+```
+THESE TEMPLATES                         GRAPHIFY
+───────────────                         ────────
+"what did we DECIDE / say / try?"       "WHERE is the auth code, what calls it?"
+episodic + procedural memory (a DIARY)  spatial/code memory (a MAP)
+────────────────────────────────────────────────────────────────────
+            Different memories. Best used TOGETHER.
+```
+
+They don't overlap or conflict — run both. Suggested setup:
+
+```bash
+# 1) install graphify (separate tool)
+uv tool install graphifyy        # or: pipx install graphifyy
+
+# 2) wire it into your agent (writes a skill/hook so the agent uses the graph)
+graphify install                 # Claude Code
+graphify install --platform codex  # Codex
+
+# 3) build the map (commit graphify-out/ so teammates start mapped)
+graphify .
+
+# 4) the agent (or you) can now query instead of grepping
+graphify query "what connects auth to the database?"
+```
+
+How they fit together in practice:
+
+```
+You ask: "add rate-limiting to the login route"
+   │
+   ├─ THIS TEMPLATE supplies the rules     → DEC-004 pnpm only · REQ-002 evidence E3
+   │   (auto-injected, can't be forgotten)
+   │
+   └─ GRAPHIFY supplies the map            → "login route → AuthService → RateLimiter → Redis"
+       (so the agent edits the RIGHT files, no grep marathon)
+```
+
+> Note: graphify is a separate project (not affiliated with this repo). The PyPI package is
+> `graphifyy` (double-y). Add `graphify-out/cost.json` to your `.gitignore`.
+
 ## License
 
 MIT — use it, fork it, ship it.

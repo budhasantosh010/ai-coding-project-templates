@@ -55,6 +55,21 @@ At the first message of a session:
 3. If not proven, report and repair/test logging.
 4. Never manually duplicate a message already written by the hook.
 
+## 4b. Auto-injected context — treat it as ground truth
+
+Three trusted hooks automatically push project context into your view so you cannot drift or
+forget, even after compaction:
+
+- `inject_context.ps1` (**SessionStart**, incl. source=compact) — re-injects CURRENT_STATE plus
+  the DECISIONS/REQUIREMENTS/FAILURE catalog. After a compaction this is your spine; trust it.
+- `inject_on_prompt.ps1` (**UserPromptSubmit**) — attaches the active rules plus a transcript
+  pointer to every message.
+- `inject_decisions_preedit.ps1` (**PreToolUse: apply_patch/Edit/Write**) — puts the active
+  DEC/REQ rules right next to each edit. If your edit would break one, STOP and flag it.
+
+When injected context disagrees with your memory, the injected DOCS win. If the user asks
+"did you remember X?", check the injected catalog and `DOCS/_raw/user_messages.txt` — never guess.
+
 ## 5. Change workflow
 
 Before modifying code:

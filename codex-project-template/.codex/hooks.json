@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File hooks/inject_context.ps1",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\inject_context.ps1",
+            "timeout": 30,
+            "statusMessage": "Injecting project spine after session start/compaction"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -9,10 +22,30 @@
             "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\log_user_message.ps1",
             "timeout": 30,
             "statusMessage": "Saving user message to the project transcript"
+          },
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File hooks/inject_on_prompt.ps1",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\inject_on_prompt.ps1",
+            "timeout": 30,
+            "statusMessage": "Injecting active project rules alongside the prompt"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File hooks/inject_decisions_preedit.ps1",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\inject_decisions_preedit.ps1",
+            "timeout": 30,
+            "statusMessage": "Injecting active rules before an edit"
           }
         ]
       }
     ]
   }
 }
-
