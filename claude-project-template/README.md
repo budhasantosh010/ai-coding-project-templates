@@ -18,11 +18,31 @@ sessions; you re-explain;        so a fresh session reloads the FULL context and
 ```
 your project/
 ├─ CLAUDE.md            ← the short rulebook Claude auto-loads
-├─ .claude/settings.json← wires the message-logging hook
-├─ hooks/               ← logger + two self-checks
+├─ .claude/settings.json← wires the logging + context-injection hooks
+├─ hooks/               ← logger + 3 auto-injectors + two self-checks
 └─ DOCS/                ← the brain: index, requirements, decisions, failures,
                           anti-drift rules, change records, history, transcript
 ```
+
+## RECALL is forced, not hoped-for (the auto-injection hooks)
+
+The hardest problem with AI agents is that they *forget* — a long session compacts, the
+codebase grows, and the model silently loses what you told it. This template doesn't just
+*save* your context to disk; it **pushes it back into the model's view automatically** at the
+three moments forgetting happens:
+
+```
+WHEN forgetting happens          WHICH hook fires          WHAT it re-injects
+──────────────────────           ────────────────          ──────────────────
+session compacts / resumes  →    inject_context        →   CURRENT_STATE + DEC/REQ/FAIL catalog
+you send any message        →    inject_on_prompt      →   active rules + "read the transcript"
+just before an edit (step 15)→   inject_decisions_preedit→ the active DEC/REQ rules, at the edit
+```
+
+So "we use pnpm not npm" stops depending on the model *remembering* — the rule is placed in
+front of it every session, every message, and every edit. The information being PRESENT is
+guaranteed (the hook can't be skipped); the model can't drift off something that's on screen.
+All injectors fail safe: on any error they emit nothing and never block your session.
 
 ## Install
 

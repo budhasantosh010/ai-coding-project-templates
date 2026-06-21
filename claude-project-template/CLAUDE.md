@@ -45,6 +45,17 @@ user correction, three commits, an integration failure, or before any paid/destr
   it landed there **exactly once**. If the hook isn't proven active, append it yourself and
   report it. Never silently duplicate a message the hook already wrote.
 
+## 2b) AUTO-INJECTED CONTEXT — treat it as ground truth
+Three hooks automatically push project context into your view so you cannot drift or forget:
+- `inject_context.ps1` (**SessionStart**, incl. after compaction) — re-injects CURRENT_STATE +
+  the DECISIONS/REQUIREMENTS/FAILURE catalog. After a compaction this is your spine; trust it.
+- `inject_on_prompt.ps1` (**UserPromptSubmit**) — attaches the active rules + a transcript
+  pointer to every message.
+- `inject_decisions_preedit.ps1` (**PreToolUse: Edit/Write**) — puts the active DEC/REQ rules
+  right next to each edit. If your edit would break one, STOP and flag it.
+When injected context disagrees with your memory, **the injected DOCS win.** If a user asks
+"did you remember X?", check the injected catalog and `DOCS/_raw/user_messages.txt` — do not guess.
+
 ## 3) ZERO CHINESE WHISPERS
 - Preserve exact user intent. Keep verified facts, historical claims, assumptions, and
   proposals clearly separate — never blur them.
