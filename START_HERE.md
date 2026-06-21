@@ -24,10 +24,16 @@ Use OpenAI Codex?  →  codex-project-template/
 
 ---
 
-## The prompts to paste (Claude Code)
+## The prompts to paste (works for BOTH Claude Code and Codex)
 
-> For Codex, use the same prompts but they're already in `codex-project-template/DOCS/STARTUP_MESSAGE.md`.
-> Replace `<PROJECT_ROOT>` with your real path.
+> The prompts are **identical** for both agents — with ONE difference: the rulebook filename.
+> ```
+> Claude Code → read CLAUDE.md   (everything else is the same)
+> OpenAI Codex → read AGENTS.md  (everything else is the same)
+> ```
+> Below, that first file is written as `[CLAUDE.md / AGENTS.md]` — keep the one for your agent.
+> Replace `<PROJECT_ROOT>` with your real path. (Each template also has these in its own
+> `DOCS/STARTUP_MESSAGE.md`.)
 
 ### 🟢 FIRST session (right after installing the template)
 
@@ -38,7 +44,7 @@ Project root:
 <PROJECT_ROOT>
 
 Read in order:
-1. CLAUDE.md
+1. [CLAUDE.md / AGENTS.md]   (Claude reads CLAUDE.md; Codex reads AGENTS.md)
 2. DOCS/INDEX.md
 3. DOCS/CURRENT_STATE.md
 4. DOCS/REQUIREMENTS.md
@@ -63,8 +69,8 @@ and rollback safeguards are active.
 ### 🔵 EVERY later new session
 
 ```text
-Reload the authoritative project context required by CLAUDE.md and DOCS/INDEX.md. Follow
-DOCS/ANTI_DRIFT_PROTOCOL.md and DOCS/CHANGE_POLICY.md.
+Reload the authoritative project context required by [CLAUDE.md / AGENTS.md] and DOCS/INDEX.md.
+Follow DOCS/ANTI_DRIFT_PROTOCOL.md and DOCS/CHANGE_POLICY.md.
 
 Before editing:
 - confirm the active Requirement ID and exact intended outcome;
