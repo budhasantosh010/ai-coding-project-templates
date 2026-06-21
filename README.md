@@ -1,123 +1,119 @@
 # AI Coding Project Templates
 
-Two drop-in templates that give an AI coding agent a **memory + governance system** for any
-project — so it stops forgetting between sessions, stops drifting on long tasks, stops claiming
-"done" without proof, and can't make a change you can't undo.
-
-Same system, one folder per agent:
+A coding agent forgets. Halfway through a build the context compacts, and suddenly it's
+re-asking things you settled an hour ago or quietly ignoring a rule you set on day one. These
+are two drop-in templates — one for Claude Code, one for Codex — that fix that by keeping the
+project's memory in files and feeding it back to the agent automatically.
 
 ```
 ai-coding-project-templates/
-├─ claude-project-template/   ← for Claude Code   (rulebook = CLAUDE.md,  hook via .claude/settings.json)
-└─ codex-project-template/    ← for OpenAI Codex  (rulebook = AGENTS.md,  hook via .codex/hooks.json)
+├─ claude-project-template/   for Claude Code   (rulebook = CLAUDE.md,  hook via .claude/settings.json)
+└─ codex-project-template/    for OpenAI Codex  (rulebook = AGENTS.md,  hook via .codex/hooks.json)
 ```
 
-Both are **identical in structure and intent** — only the agent-specific filenames differ.
+Both folders are the same system. The only differences are the rulebook filename and how each
+agent registers hooks.
 
 ## Table of contents
 
 - [What problem do these solve?](#what-problem-do-these-solve)
 - [Pick your agent](#pick-your-agent)
 - [Install (per project)](#install-per-project)
-- [How RECALL is forced, not hoped-for](#how-recall-is-forced-not-hoped-for) — the auto-injection hooks
-- [What's inside each template](#whats-inside-each-template-the-shared-brain)
-- [Optional companion: graphify](#optional-companion-graphify-for-huge-codebases)
+- [How recall is forced, not hoped-for](#how-recall-is-forced-not-hoped-for)
+- [What's inside each template](#whats-inside-each-template)
+- [Optional companion: graphify](#optional-companion-graphify)
   - [Does graphify auto-fire from these templates?](#does-graphify-auto-fire-from-these-templates)
-  - [graphify: install ONCE, build PER PROJECT](#graphify-install-once-build-per-project)
-  - [Does it cost money? (the honest caveat)](#does-it-cost-money-the-honest-caveat)
-  - [You don't need the paid step — structure-only is enough](#you-dont-need-the-paid-step--structure-only-is-enough)
+  - [Install once, build per project](#install-once-build-per-project)
+  - [Does it cost money?](#does-it-cost-money)
+  - [You probably don't need the paid step](#you-probably-dont-need-the-paid-step)
 - [License](#license)
 
 ## What problem do these solve?
 
+Four things that go wrong on any long-running agent session, and what the template does about
+each:
+
 ```
-WITHOUT a template                      WITH a template
-──────────────────                      ───────────────
-Agent forgets everything between        Every message + decision + change is written to DOCS/,
-sessions; you re-explain endlessly.     so a fresh session reloads the FULL context and continues.
+Without                                 With
+───────                                 ────
+Forgets between sessions; you           Every message, decision and change lands in DOCS/,
+re-explain the project constantly.      so a fresh session reloads the full context.
 
-"Done" can mean "the code exists"       "Done" requires EVIDENCE (E0–E5): a passing test or a
-even if it was never run.                real run — not just code that imports.
+"Done" means "the code exists,"         "Done" means a passing test or a real run (E0–E5),
+even if it never ran.                   not just code that imports.
 
-Same error retried forever.             Three-strike rule: same failure 3× → stop & diagnose.
+Same error retried forever.             Three strikes on the same failure → stop and diagnose.
 
-Silent fallbacks, lost reasons,         No silent fallback. Decisions logged. Failures registered
-unrepeatable bugs.                       with regression tests so they can't quietly return.
+Silent fallbacks; lost reasoning.       Fallbacks must be stated. Decisions and failures are
+                                        logged with the test that stops them returning.
 ```
 
 ## Pick your agent
 
-| You use… | Open this folder | Its rulebook |
+| You use | Open this folder | Rulebook |
 |---|---|---|
-| **Claude Code** (CLI / VS Code ext / desktop) | `claude-project-template/` | `CLAUDE.md` |
-| **OpenAI Codex** (CLI / VS Code ext / desktop) | `codex-project-template/` | `AGENTS.md` |
+| Claude Code (CLI / VS Code / desktop) | `claude-project-template/` | `CLAUDE.md` |
+| OpenAI Codex (CLI / VS Code / desktop) | `codex-project-template/` | `AGENTS.md` |
 
 ## Install (per project)
 
-You do this once **per project** (copying the template in). The short version:
+Do this once per project, when you copy the template in:
 
-1. Copy your chosen folder's contents into your project root.
-2. Replace the `<PROJECT_NAME>` / `<PROJECT_ROOT>` / `<OWNER>` / `<DATE>` placeholders.
+1. Copy your folder's contents into the project root.
+2. Fill in the `<PROJECT_NAME>` / `<PROJECT_ROOT>` / `<OWNER>` / `<DATE>` placeholders.
 3. Open the project in your agent and trust its hooks.
-4. Run the two `hooks/verify_*.ps1` self-checks (they should all PASS).
-5. Paste that folder's `DOCS/STARTUP_MESSAGE.md` first-session block into the first chat
-   (also collected in [START_HERE.md](START_HERE.md)).
+4. Run both `hooks/verify_*.ps1` checks — they should all pass.
+5. Paste the first-session block from `DOCS/STARTUP_MESSAGE.md` into the first chat. (The
+   prompts are also collected in [START_HERE.md](START_HERE.md).)
 
-## How RECALL is forced, not hoped-for
+## How recall is forced, not hoped-for
 
-The hardest problem with AI agents is that they **forget**: a long session compacts, the
-codebase grows, and the model silently loses what you told it. ("You said pnpm not npm. Next
-session it runs npm again.")
+Saving context to a file is the easy half. The hard half is getting the agent to actually look
+at it once the conversation has moved on. Telling it "check DECISIONS.md when unsure" is a sign
+on the wall — it can walk right past it.
 
-These templates don't just *save* your context to disk — they **push it back into the model's
-view automatically**, via hooks, at the three exact moments forgetting happens:
-
-```
-WHEN forgetting happens          WHICH hook fires             WHAT it re-injects
-─────────────────────            ────────────────             ──────────────────
-session compacts / resumes  →    inject_context           →   CURRENT_STATE + DEC/REQ/FAIL catalog
-you send any message        →    inject_on_prompt         →   the active rules + "read the transcript"
-just before an edit (step 15)→   inject_decisions_preedit →   the active DEC/REQ rules, AT the edit
-```
+So the templates don't rely on that. Three hooks read your files and push the relevant bits
+back into the agent's view at the moments it tends to forget:
 
 ```
-A markdown rule the agent must CHOOSE to read   = a sign on the wall (it can walk past).
-A hook that injects the rule automatically       = the rule is already on screen (can't miss it).
+when                            hook                      what it puts back
+────                            ────                      ─────────────────
+session starts or compacts      inject_context            CURRENT_STATE + the DEC/REQ/FAIL list
+you send a message              inject_on_prompt          the active rules + "read the transcript"
+right before an edit            inject_decisions_preedit  the active DEC/REQ rules, at the edit
 ```
 
-So a preference like "pnpm not npm" stops depending on the model *remembering* — it's placed
-in front of the agent every session, every message, and every edit. The information being
-**present** is guaranteed (the hook can't be skipped). All injectors fail safe: on any error
-they emit nothing and never block your session.
+The point: "we use pnpm, not npm" stops depending on the model remembering it. The rule is on
+screen at session start, on every message, and again right before the agent writes the install
+command. A hook can't be skipped, so the information is guaranteed to be there. And they all
+fail safe — if a hook errors it prints nothing and never blocks your session.
 
-> This is the difference between *"please remember"* and *"the answer is already on the screen."*
-
-## What's inside each template (the shared brain)
+## What's inside each template
 
 ```
 <root>/
-├─ CLAUDE.md / AGENTS.md   the short rulebook the agent auto-loads
-├─ .claude/ or .codex/     wires the logging + 3 context-injection hooks
-├─ hooks/                  logger + 3 auto-injectors (recall) + 2 self-verifying checks
+├─ CLAUDE.md / AGENTS.md   the rulebook the agent auto-loads
+├─ .claude/ or .codex/     wires up the logging + injection hooks
+├─ hooks/
 │   ├─ log_user_message.ps1          saves every message word-for-word
-│   ├─ inject_context.ps1            re-injects the spine on session start / after compaction
-│   ├─ inject_on_prompt.ps1          injects active rules alongside every message
-│   ├─ inject_decisions_preedit.ps1  injects active rules right before each edit
+│   ├─ inject_context.ps1            re-injects the spine on start / after compaction
+│   ├─ inject_on_prompt.ps1          injects active rules with every message
+│   ├─ inject_decisions_preedit.ps1  injects active rules right before an edit
 │   ├─ verify_project_setup.ps1      checks every required file exists
-│   └─ verify_governance.ps1         checks the rules haven't rotted away
+│   └─ verify_governance.ps1         checks the rules haven't been gutted
 └─ DOCS/
-   ├─ INDEX.md             map of all docs + conflict order (who wins)
-   ├─ CURRENT_STATE.md     what's verified-true right now (+ E0–E5 legend)
+   ├─ INDEX.md             map of all docs + which one wins in a conflict
+   ├─ CURRENT_STATE.md     what's verified true right now (+ the E0–E5 legend)
    ├─ REQUIREMENTS.md      testable user needs (REQ-XXX)
-   ├─ DECISIONS.md         architecture choices + why (DEC-XXX)
-   ├─ FAILURE_REGISTRY.md  recurring bugs + regression tests (FAIL-XXX)
-   ├─ ANTI_DRIFT_PROTOCOL.md  short-loop, three-strike, no-silent-fallback
-   ├─ CHANGE_POLICY.md     raw → REQ → evidence → one commit → record
+   ├─ DECISIONS.md         architecture choices and why (DEC-XXX)
+   ├─ FAILURE_REGISTRY.md  recurring bugs + the regression test (FAIL-XXX)
+   ├─ ANTI_DRIFT_PROTOCOL.md  short loop, three-strike, no silent fallback
+   ├─ CHANGE_POLICY.md     raw request → REQ → evidence → one commit → record
    ├─ CHANGE_RECORD_TEMPLATE.md
    ├─ GIT_RUNBOOK.md       safe commit / branch / rollback
    ├─ HANDOVER_RUNBOOK.md  zero-context operator guide
    ├─ STARTUP_MESSAGE.md   prompts to paste at session start
-   ├─ BOOTSTRAP_PROMPT.md  "install this system into a fresh project" prompt
+   ├─ BOOTSTRAP_PROMPT.md  prompt to install this system into a fresh project
    ├─ PROJECT_LOG.md       append-only history
    ├─ BUILD_TRACKER.md     status board
    ├─ STATECHART.md        optional visual
@@ -125,169 +121,111 @@ they emit nothing and never block your session.
    └─ _raw/user_messages.txt   exact word-for-word transcript
 ```
 
-## Optional companion: graphify (for huge codebases)
+## Optional companion: graphify
 
-These templates give the agent **episodic + procedural memory** — what you said, what was
-decided, what failed, how you work. They do **not** map *where the code is*. On a large
-codebase, that second kind of memory matters too, and a great open tool already does it:
-[graphify](https://github.com/safishamsi/graphify) builds a queryable **knowledge graph** of
-your code so the agent looks things up instead of grepping 200 files.
+The templates remember what you said and decided. They don't map where your code lives. On a
+big repo that second kind of memory matters too, and [graphify](https://github.com/safishamsi/graphify)
+already does it well — it builds a queryable graph of your code so the agent looks things up
+instead of grepping through 200 files.
 
 ```
-THESE TEMPLATES                         GRAPHIFY
+these templates                         graphify
 ───────────────                         ────────
-"what did we DECIDE / say / try?"       "WHERE is the auth code, what calls it?"
-episodic + procedural memory (a DIARY)  spatial/code memory (a MAP)
-────────────────────────────────────────────────────────────────────
-            Different memories. Best used TOGETHER.
+what did we decide / say / try?         where is the auth code, what calls it?
+a diary                                 a map
 ```
 
-They don't overlap or conflict — run both.
+Different jobs, no overlap. If you want both, here's how they fit — but a few things trip
+people up, so they're worth spelling out.
 
 ### Does graphify auto-fire from these templates?
 
-**No. They are completely separate systems.** Nothing in these templates installs, calls, or
-fires graphify. Installing a template does **not** install graphify.
+No. They're separate. Nothing in these templates installs or calls graphify, and copying a
+template in does not pull it in.
 
 ```
-TEMPLATE alone           →  graphify does NOTHING (it isn't there).
-+ graphify install       →  the AGENT auto-uses the graph DURING a session
-                            (graphify's own hook nudges it to query the map instead of grepping).
-+ graphify hook install  →  the MAP auto-rebuilds on every `git commit`.
+template on its own       graphify isn't there, nothing happens
++ graphify install        the agent starts using the graph during a session
++ graphify hook install   the map rebuilds itself on every git commit
 ```
 
-So graphify only "auto-fires" **per project, after YOU run its own two commands in that
-project** — never automatically from our templates. You stay in control.
+graphify only starts doing anything after you run its own commands in a project. It never fires
+on its own from this repo.
 
-### graphify: install ONCE, build PER PROJECT
+### Install once, build per project
 
-People blur three separate events together. Here's the truth, so you know exactly what to do
-for every project:
-
-```
-① INSTALL THE TOOL        → ONCE per laptop, forever.    uv tool install graphifyy
-   (puts the `graphify` command on your machine)
-
-② WIRE IT INTO A PROJECT  → ONCE per project.            graphify install            (Claude)
-   (writes the skill/hook so the agent uses             graphify install --platform codex
-    the graph in THAT repo)
-
-③ BUILD THE FIRST MAP     → ONCE per project.            graphify .
-   (reads the code, writes graphify-out/graph.json)
-
-④ AUTO-REFRESH THE MAP    → ONCE per project (set&forget). graphify hook install
-   (installs a POST-COMMIT git hook → every `git commit`
-    rebuilds the map so it never goes stale)
-```
-
-So your instinct "install once then it runs itself" is **half right**:
+People run these together as one step and then wonder why the map is stale. They're four
+separate things:
 
 ```
-"install once"  ✅  → step ① the tool: yes, once per laptop, forever.
-"runs itself"   🟡  → the MAP does NOT rebuild on its own UNTIL you do step ④
-                      (the post-commit hook). Before that, code changes leave the map stale.
+1. install the tool       once per laptop, forever     uv tool install graphifyy
+2. wire it into a project  once per project             graphify install   (or --platform codex)
+3. build the first map     once per project             graphify .
+4. auto-refresh the map    once per project             graphify hook install
 ```
 
-Per machine + per project, the full picture:
+Step 4 is the one most people skip, and it's why "install once and it runs itself" is only half
+true. The tool installs once. But the map doesn't rebuild on its own until you add the
+post-commit hook in step 4 — until then, every code change leaves it a little more out of date.
+
+So per project it's three quick commands:
 
 ```
-ONE TIME on the laptop:    uv tool install graphifyy
-PER PROJECT (once each):   graphify install        # agent uses the graph
-                           graphify .              # build the first map
-                           graphify hook install   # auto-rebuild on every commit (set & forget)
+graphify install        # agent uses the graph
+graphify .              # build the first map
+graphify hook install   # rebuild on every commit, then forget about it
 ```
 
-New project? Repeat the three per-project lines (~30 seconds). Commit `graphify-out/` so
-teammates start already-mapped. Query it any time:
+Commit the `graphify-out/` folder so teammates start with the map already built, and query it
+whenever you want:
 
 ```bash
 graphify query "what connects auth to the database?"
 ```
 
-How the two systems fit together on a real task:
+On a real task the two systems hand off cleanly — the template supplies the rules, graphify
+supplies the map:
 
 ```
-You ask: "add rate-limiting to the login route"
-   │
-   ├─ THIS TEMPLATE supplies the rules     → DEC-004 pnpm only · REQ-002 evidence E3
-   │   (auto-injected, can't be forgotten)
-   │
-   └─ GRAPHIFY supplies the map            → "login route → AuthService → RateLimiter → Redis"
-       (so the agent edits the RIGHT files, no grep marathon)
+"add rate-limiting to the login route"
+   ├─ template:  DEC-004 pnpm only · REQ-002 needs an integration test
+   └─ graphify:  login route → AuthService → RateLimiter → Redis
 ```
 
-### Does it cost money? (the honest caveat)
+### Does it cost money?
 
-Building the map does **two different jobs**, and only one costs anything:
+Building the map is two jobs, and only one of them costs anything.
 
-```
-JOB 1: read the CODE structure       → tree-sitter, runs LOCALLY on your machine.
-       (functions, files, call graph)   FREE. No internet, no API, no cost.
+Reading code structure — functions, files, what calls what — runs locally with tree-sitter.
+That's free; nothing leaves your machine. Understanding *meaning* (tying docs and PDFs to code,
+naming concepts, summarizing) is sent to an LLM, and that's the part that costs tokens, because
+an actual model has to read it.
 
-JOB 2: understand MEANING + docs/PDFs → sent to an LLM (an API "brain") to reason about.
-       (concepts, relationships,         COSTS TOKENS / $, because an LLM has to read it.
-        summarizing a PDF)
-```
+That split is also why the refresh runs on commit instead of constantly in the background —
+each rebuild spends a little on that LLM, so it waits for your commit rather than burning money
+while you sleep. You decide when it costs anything. And if you'd rather it cost nothing, point
+it at a local model (`--backend ollama`) and even the meaning step stays on your machine.
 
-Plain version: **mapping where code IS = free; understanding what it MEANS = costs tokens**
-(an LLM has to think about it).
+(graphify is a separate project, not affiliated with this repo. The PyPI package is `graphifyy`
+with a double y. Add `graphify-out/cost.json` to your `.gitignore`.)
 
-That's exactly why the refresh is **commit-triggered, not constant** — each rebuild spends a
-little on that LLM, so graphify waits for *your* commit instead of burning money in the
-background 24/7. **You control when the cost happens.**
+### You probably don't need the paid step
 
-```
-💡 Want it fully FREE? graphify can use a LOCAL model (e.g. `--backend ollama`) for Job 2.
-   Then nothing leaves your machine — zero API cost, just slower.
-```
+For "just map my code so the agent finds things fast," the free structural map is enough on its
+own. It already answers the questions you actually ask: where is `UserService` defined, what
+calls `login()`, what does `auth.ts` import, what breaks if I change this.
 
-> Note: graphify is a separate project (not affiliated with this repo). The PyPI package is
-> `graphifyy` (double-y). Add `graphify-out/cost.json` to your `.gitignore`.
+The reason the paid meaning layer is mostly redundant is simple — your coding agent is already
+a model. It reads the structural map and works out the meaning itself, on the fly. Paying a
+second LLM up front to pre-chew that is doing a job your agent does for free as it goes.
 
-### You don't need the paid step — structure-only is enough
-
-**Job 2 (the LLM meaning layer) is optional, not required.** For "just map my codebase so the
-agent finds code fast," the free structural map (Job 1) already gives you everything that
-matters:
-
-```
-From the FREE structural map alone, the agent can already answer:
-  ✅ where is UserService defined?          ✅ what calls login()?
-  ✅ what does auth.ts import?               ✅ if I change this, what breaks?
-```
-
-And here's the key insight: **your coding agent is already a smart meaning-understander.** It
-reads the structural map and infers the meaning itself, on the fly — so paying a *second* LLM
-to pre-chew "what this means" is largely redundant for navigation.
-
-```
-       graphify Job 2                      your coding agent
-       ──────────────                      ─────────────────
-   "pre-infer meaning, bake it in"   vs    "just read the structure, I'll
-            │ costs tokens                   understand it myself" │ free, already happening
-```
-
-What you give up by skipping Job 2 (all nice-to-haves, none essential for navigation):
-
-```
-✗ understanding NON-code files (PDFs, design docs, images)
-✗ INFERRED conceptual links not written literally in the code
-✗ pretty human-named clusters ("Auth subsystem")
-✗ extracted "why" notes from comments as separate nodes
-```
-
-```
-Skip Job 2 (structure only) is the right default when:
-   pure code navigation · small/medium repo · you just want "find the right file fast"
-
-Job 2 earns its cost only when:
-   you have lots of DOCS/PDFs to tie to code · a huge repo with non-obvious conceptual links ·
-   onboarding people who need the "why"
-```
-
-Bottom line: **a structural map + a capable model = enough.** Treat the LLM layer as optional
-polish, and if you ever want it, run it locally for free with `--backend ollama`.
+What you give up by skipping it: understanding non-code files like PDFs and design docs,
+inferred conceptual links that aren't written literally in the code, nicely-named clusters, and
+the "why" pulled out of comments. All nice to have, none of it needed to navigate code. It
+earns its keep when you've got a lot of docs to tie to the code, or a huge repo where the
+connections aren't obvious, or you're onboarding people who need the reasoning. Otherwise:
+structural map plus a capable agent is plenty.
 
 ## License
 
-MIT — use it, fork it, ship it.
+MIT. Use it, fork it, ship it.
