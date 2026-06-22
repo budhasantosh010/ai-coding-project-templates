@@ -20,6 +20,7 @@ agent registers hooks.
 - [Pick your agent](#pick-your-agent)
 - [Install (per project)](#install-per-project)
 - [How recall is forced, not hoped-for](#how-recall-is-forced-not-hoped-for)
+- [The decision tree (see it, and roll back to it)](#the-decision-tree)
 - [What's inside each template](#whats-inside-each-template)
 - [Optional companion: graphify](#optional-companion-graphify)
   - [Does graphify auto-fire from these templates?](#does-graphify-auto-fire-from-these-templates)
@@ -87,6 +88,40 @@ The point: "we use pnpm, not npm" stops depending on the model remembering it. T
 screen at session start, on every message, and again right before the agent writes the install
 command. A hook can't be skipped, so the information is guaranteed to be there. And they all
 fail safe — if a hook errors it prints nothing and never blocks your session.
+
+## The decision tree
+
+A long project is really a tree of decisions: one goal, a fork with a few options, you pick
+one, that becomes the new trunk, it forks again. Markdown is a bad shape for reading that —
+a flattened list loses which branch came from which fork. So the template also keeps the
+decisions as a tree you can actually look at.
+
+Every real decision the agent makes is appended to `DOCS/_raw/decisions.jsonl` (with the user
+message number it came from, the options that were on the table, which was chosen, and the git
+commit at that moment). After each turn a hook redraws it as `DOCS/decision_tree.mmd` (renders
+on GitHub) and `DOCS/decision_tree.svg` (double-click offline). The drawing is pure scripting —
+it costs zero model tokens.
+
+```
+ROOT  the main goal (kept intact at the top)
+ └─ DEC-001  msg 1
+     └─ DEC-002  msg 40   options[memory-only, governance] -> governance
+         └─ DEC-003  msg 48   options[instructions, hooks] -> hooks   [a1b2c3]
+```
+
+The picture is for you. But it's also how you **direct the agent without ambiguity**. Instead
+of "go back to where we decided that thing," you point at a node:
+
+```
+You:   "DEC-003 was the wrong call — roll back to it."
+Agent: hooks/rollback_to_decision.ps1 -Id DEC-003 -Apply
+       → git-reverts to that decision's stored commit, redraws the tree, marks later
+         decisions superseded. Deterministic — the commit hash is the single source of truth.
+```
+
+You can point by decision id (`-Id DEC-003`) or by message number (`-Msg 48`) — both resolve to
+one exact commit, so there's nothing for the agent to guess. (Rollback needs git in the project;
+the agent always previews before applying.)
 
 ## What's inside each template
 

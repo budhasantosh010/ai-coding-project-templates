@@ -98,7 +98,15 @@ try {
         'unknown'
     }
 
-    $entry = "`r`n===== [$stamp] session=$thread =====`r`n$prompt`r`n"
+    # Running message NUMBER: count existing "===== [" headers, add 1. Lets decisions cite
+    # exactly which user message they came from (e.g. "msg 7").
+    $msgNum = 1
+    if (Test-Path -LiteralPath $logFile) {
+        $existing = Select-String -LiteralPath $logFile -Pattern '^===== \[' -AllMatches
+        $msgNum = (@($existing).Count) + 1
+    }
+
+    $entry = "`r`n===== [$stamp] session=$thread msg=$msgNum =====`r`n$prompt`r`n"
     [System.IO.File]::AppendAllText($logFile, $entry, [System.Text.UTF8Encoding]::new($false))
     exit 0
 }

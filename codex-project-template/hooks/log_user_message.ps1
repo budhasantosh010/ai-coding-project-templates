@@ -84,7 +84,14 @@ try {
         'unknown'
     }
 
-    $entry = "`r`n===== [$stamp] thread=$thread =====`r`n$prompt`r`n"
+    # Running message NUMBER: count existing headers + 1, so decisions can cite which message.
+    $msgNum = 1
+    if (Test-Path -LiteralPath $logFile) {
+        $existing = Select-String -LiteralPath $logFile -Pattern '^===== \[' -AllMatches
+        $msgNum = (@($existing).Count) + 1
+    }
+
+    $entry = "`r`n===== [$stamp] thread=$thread msg=$msgNum =====`r`n$prompt`r`n"
     [System.IO.File]::AppendAllText($logFile, $entry, [System.Text.UTF8Encoding]::new($false))
     exit 0
 }

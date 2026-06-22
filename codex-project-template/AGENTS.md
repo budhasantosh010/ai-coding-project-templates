@@ -70,6 +70,26 @@ forget, even after compaction:
 When injected context disagrees with your memory, the injected DOCS win. If the user asks
 "did you remember X?", check the injected catalog and `DOCS/_raw/user_messages.txt` — never guess.
 
+## 4c. Decision tree — record decisions, and roll back on command
+
+Every real decision is logged to `DOCS/_raw/decisions.jsonl` and drawn as a tree the user can
+see (`DOCS/decision_tree.svg` + `.mmd`). This is how the user points at work precisely.
+
+- **When you make a real decision** (picked an option, set a direction), record it — supply the
+  user **message number** it came from (see `msg=N` in `user_messages.txt`):
+  ```
+  pwsh -NoProfile -File hooks/record_decision.ps1 -Id DEC-00X -Msg <n> -Title "<short>" `
+    -Options "a,b,c" -Chosen "b" -Parent DEC-00Y -Status chosen
+  ```
+  Use `-Parent ROOT` for the top-level goal. The tree redraws automatically (zero tokens).
+- **When the user names a `DEC-XXX` or a message number and says it was wrong / "roll back"**,
+  do NOT guess what to undo. Run the deterministic tool — preview first, then apply on confirm:
+  ```
+  hooks/rollback_to_decision.ps1 -Id DEC-XXX          # preview (changes nothing)
+  hooks/rollback_to_decision.ps1 -Id DEC-XXX -Apply   # git-revert to that checkpoint + redraw
+  ```
+  The decision's stored commit hash is the single source of truth — nothing to interpret.
+
 ## 5. Change workflow
 
 Before modifying code:
