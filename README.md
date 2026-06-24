@@ -20,6 +20,8 @@ agent registers hooks.
 - [Pick your agent](#pick-your-agent)
 - [Install (per project)](#install-per-project)
 - [How recall is forced, not hoped-for](#how-recall-is-forced-not-hoped-for)
+- [Looking things up by meaning (recall)](#looking-things-up-by-meaning-recall)
+- [Staying pointed at the goal](#staying-pointed-at-the-goal)
 - [The decision tree (see it, and roll back to it)](#the-decision-tree)
 - [What's inside each template](#whats-inside-each-template)
 - [Optional companion: graphify](#optional-companion-graphify)
@@ -89,6 +91,45 @@ screen at session start, on every message, and again right before the agent writ
 command. A hook can't be skipped, so the information is guaranteed to be there. And they all
 fail safe — if a hook errors it prints nothing and never blocks your session.
 
+## Looking things up by meaning (recall)
+
+Re-injecting your rules handles the recent stuff. But what about "what did we decide about
+pricing three months ago?" — buried in a long transcript, maybe phrased with different words.
+That's what the recall hook (`recall.ps1`, on every message) does, and it's built to cost almost
+nothing:
+
+```
+1. Does the message even look back? ("remember…", "earlier", "that bug", "it/this")
+   No  → do nothing. 0 tokens. (most messages)
+   Yes → continue.
+2. Resolve vague words: "find it" → the most-mentioned recent thing.
+3. Search, cheapest first:
+     tier 1  keyword over decisions + transcript        (free, instant)
+     tier 2  semantic by meaning — ONLY if tier 1 weak  (local model; "login" finds "auth")
+4. Verify: if the hit names a file, grep the CURRENT file → CONFIRMED or STALE.
+5. Inject a tiny cited pointer (~40 tokens): "DEC-004 (msg 7): pnpm only [CONFIRMED]"
+     …or, if nothing matched: "not found" — so the agent says so instead of inventing an answer.
+```
+
+Two things make this trustworthy: it **cites** where the answer came from (decision id, message
+number, file), and it **admits when it doesn't know** rather than hallucinating. The expensive
+semantic step only runs when the cheap keyword step comes up short — so on a normal message the
+recall layer is silent and free.
+
+**Semantic search is optional.** It switches on only if you install one library
+(`uv pip install sentence-transformers`, or `pip install --user sentence-transformers`). Without
+it, recall works in keyword mode and everything still runs. The embedding model runs locally on
+your CPU — zero API cost either way.
+
+## Staying pointed at the goal
+
+A separate hook (`goal_convergence.ps1`, after each turn) keeps score against your ROOT goal. It
+reads the active decisions, open blockers, and whether recent work still overlaps the goal, then
+writes a one-line status — `ON-TRACK`, `DRIFTING`, or `BLOCKED` — to `DOCS/GOAL_STATUS.md`, and
+surfaces it only when it changes. It's a cheap code proxy (zero tokens), so it's an early-warning
+flag, not a verdict; for the real "are we actually there?" judgment you ask the agent directly at
+a milestone.
+
 ## The decision tree
 
 A long project is really a tree of decisions: one goal, a fork with a few options, you pick
@@ -98,16 +139,35 @@ decisions as a tree you can actually look at.
 
 Every real decision the agent makes is appended to `DOCS/_raw/decisions.jsonl` (with the user
 message number it came from, the options that were on the table, which was chosen, and the git
-commit at that moment). After each turn a hook redraws it as `DOCS/decision_tree.mmd` (renders
-on GitHub) and `DOCS/decision_tree.svg` (double-click offline). The drawing is pure scripting —
-it costs zero model tokens.
+commit at that moment). After each turn a hook redraws three views — all pure scripting, zero
+model tokens:
 
 ```
-ROOT  the main goal (kept intact at the top)
- └─ DEC-001  msg 1
-     └─ DEC-002  msg 40   options[memory-only, governance] -> governance
-         └─ DEC-003  msg 48   options[instructions, hooks] -> hooks   [a1b2c3]
+DOCS/decision_tree.txt        the big picture as text: a left "main goal" spine, every
+                              decision branching off it, options fanning out, the picked one
+                              marked, down to a goal-check box. Code-drawn, so the layout is
+                              exact and never shifts.
+DOCS/decision_tree/msg_*.svg  one small clean picture PER message (renders cleanly because
+                              it's small). Append-only — the folder IS your history.
+DOCS/decision_tree_FULL.txt   every user message in tree shape, each tagged with the decision
+                              it produced or "(no decision)". The complete timeline.
+DOCS/decision_tree_history/   timestamped snapshots of the text views before each redraw.
 ```
+
+The text big-picture looks like this:
+
+```
+[ROOT] MAIN GOAL: never lose work across sessions
+  |
+  +-- {MSG 3}  session recovery     ( manual-copy )  <PICKED: bridge-tool>  ( ignore )
+  +-- {MSG 7}  template strategy     ( memory-only )  <PICKED: governance>   ( hybrid )
+  +-- {MSG 12} fix recall            ( instructions ) <PICKED: injection-hooks>
+  v
+[ROOT] EXPECTED FINAL GOAL  →  |GOAL CHECK| how close are we?
+```
+
+(The tree shows only the messages where a real decision was made — the forks. Every message,
+decision or not, is still in `DOCS/_raw/user_messages.txt` and in the FULL timeline.)
 
 The picture is for you. But it's also how you **direct the agent without ambiguity**. Instead
 of "go back to where we decided that thing," you point at a node:
@@ -130,10 +190,17 @@ the agent always previews before applying.)
 ├─ CLAUDE.md / AGENTS.md   the rulebook the agent auto-loads
 ├─ .claude/ or .codex/     wires up the logging + injection hooks
 ├─ hooks/
-│   ├─ log_user_message.ps1          saves every message word-for-word
+│   ├─ log_user_message.ps1          saves every message word-for-word (+ numbers them)
 │   ├─ inject_context.ps1            re-injects the spine on start / after compaction
 │   ├─ inject_on_prompt.ps1          injects active rules with every message
 │   ├─ inject_decisions_preedit.ps1  injects active rules right before an edit
+│   ├─ recall.ps1                    looks up the past on a look-back message (keyword + semantic)
+│   ├─ embed.py                      optional local semantic embedder ($0, by-meaning search)
+│   ├─ index_semantic.ps1            incrementally indexes new content for semantic recall
+│   ├─ record_decision.ps1           logs a decision (msg#, options, chosen, git commit)
+│   ├─ render_decision_tree.ps1      draws the text + per-message SVG + FULL timeline
+│   ├─ rollback_to_decision.ps1      "roll back to DEC-X" → git-revert + re-route tree
+│   ├─ goal_convergence.ps1          scores progress vs the ROOT goal
 │   ├─ verify_project_setup.ps1      checks every required file exists
 │   └─ verify_governance.ps1         checks the rules haven't been gutted
 └─ DOCS/
