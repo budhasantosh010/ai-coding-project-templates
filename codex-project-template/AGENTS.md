@@ -90,6 +90,27 @@ see (`DOCS/decision_tree.svg` + `.mmd`). This is how the user points at work pre
   ```
   The decision's stored commit hash is the single source of truth — nothing to interpret.
 
+The tree also draws a per-message picture (`DOCS/decision_tree/msg_<n>_<id>.svg`), a cumulative
+text view with the left goal-spine (`DOCS/decision_tree.txt`), a FULL timeline of every message
+tagged decision/no-decision (`DOCS/decision_tree_FULL.txt`), and timestamped history
+(`DOCS/decision_tree_history/`). All code-drawn, zero tokens.
+
+## 4d. Recall & goal — auto-injected, trust them
+
+- **Recall** (`hooks/recall.ps1`, UserPromptSubmit): when a message looks back ("remember…",
+  "earlier…", "that bug", "it/this"), a hook searches `decisions.jsonl` + `user_messages.txt`
+  (keyword; semantic if the embedder is installed), verifies any named file with a live grep,
+  and injects a tiny CITED pointer — or "not found." Treat the injected pointer as the evidence;
+  if it says not-found, say so rather than guessing.
+- **Goal status** (`hooks/goal_convergence.ps1`, Stop): a cheap code proxy writes
+  `DOCS/GOAL_STATUS.md` and flags ON-TRACK / DRIFTING / BLOCKED vs the ROOT goal. For a real
+  "are we 100%? error negligible?" judgment, the user asks you to run a goal review — read
+  `GOAL_STATUS.md` + the tree and answer; don't do it every turn.
+- **Semantic recall** activates only if `sentence-transformers` is installed
+  (`uv pip install sentence-transformers` or `pip install --user sentence-transformers`).
+  Without it, recall is keyword-only and everything still works. Indexing/embedding run locally
+  — zero API/model tokens either way.
+
 ## 5. Change workflow
 
 Before modifying code:

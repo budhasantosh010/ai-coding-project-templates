@@ -29,6 +29,13 @@
             "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\inject_on_prompt.ps1",
             "timeout": 30,
             "statusMessage": "Injecting active project rules alongside the prompt"
+          },
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File hooks/recall.ps1",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\recall.ps1",
+            "timeout": 30,
+            "statusMessage": "Recalling relevant past decisions/messages"
           }
         ]
       }
@@ -56,6 +63,20 @@
             "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\render_decision_tree.ps1",
             "timeout": 60,
             "statusMessage": "Redrawing the decision tree"
+          },
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File hooks/goal_convergence.ps1",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\goal_convergence.ps1",
+            "timeout": 30,
+            "statusMessage": "Checking goal convergence"
+          },
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File hooks/index_semantic.ps1",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File hooks\\index_semantic.ps1",
+            "timeout": 60,
+            "statusMessage": "Indexing new content for semantic recall"
           }
         ]
       }
